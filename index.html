@@ -70,8 +70,8 @@
   }
   *{box-sizing:border-box;}
   html{font-size:16px;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
-  @media (max-width:480px){ html{font-size:19px;} }
-  @media (min-width:481px) and (max-width:700px){ html{font-size:17.5px;} }
+  @media (max-width:480px){ html{font-size:clamp(19px, 5.5vw, 22px);} }
+  @media (min-width:481px) and (max-width:700px){ html{font-size:19px;} }
   html,body{margin:0;padding:0;}
   body{
     background:var(--bg);
@@ -91,7 +91,7 @@
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
 
   /* ---------- shared chrome ---------- */
-  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:10px;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:10px;flex-wrap:wrap;row-gap:8px;}
   .brand{display:flex;align-items:center;gap:10px;}
   .brand .mascot{font-size:2.125rem;line-height:1;}
   .brand h1{font-size:1.375rem;}
@@ -269,6 +269,36 @@
 <script>
 (function(){
 'use strict';
+
+/* =========================================================
+   THEME (light / dark / auto)
+   Applied as early as possible (before the storage/progress load)
+   so there's no flash of the wrong theme. The CSS already defines
+   :root[data-theme="dark"] and treats :root[data-theme="light"] as
+   an escape hatch from the OS-level prefers-color-scheme media
+   query - this just decides which one (if any) to set.
+   ========================================================= */
+var THEME_KEY = 'lernabenteuer_theme';
+function loadThemePref(){
+  try{
+    var v = localStorage.getItem(THEME_KEY);
+    return (v==='light'||v==='dark') ? v : 'auto';
+  } catch(e){ return 'auto'; }
+}
+var themePref = loadThemePref();
+function applyTheme(){
+  if (themePref==='auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', themePref);
+}
+applyTheme();
+function themeIcon(pref){ return pref==='light' ? '☀️' : (pref==='dark' ? '🌙' : '🌓'); }
+function themeLabel(pref){ return pref==='light' ? 'Design: hell' : (pref==='dark' ? 'Design: dunkel' : 'Design: automatisch'); }
+function cycleTheme(){
+  themePref = themePref==='auto' ? 'light' : (themePref==='light' ? 'dark' : 'auto');
+  try{ localStorage.setItem(THEME_KEY, themePref); } catch(e){}
+  applyTheme();
+  render();
+}
 
 /* =========================================================
    DATA: SUBJECTS + CURATED QUESTION BANKS
@@ -1015,8 +1045,9 @@ function renderTopbar(showParent){
   var stars = progress.meta.totalStars||0;
   return '<div class="topbar">'+
     '<div class="brand"><span class="mascot">🦔</span><h1>Lernabenteuer</h1></div>'+
-    '<div style="display:flex;gap:8px;align-items:center;">'+
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">'+
     '<span class="star-badge">⭐ '+stars+'</span>'+
+    '<button class="iconbtn" data-action="cycle-theme" aria-label="'+themeLabel(themePref)+'">'+themeIcon(themePref)+'</button>'+
     (showParent ? '<button class="iconbtn violet" data-action="open-parent-gate" aria-label="Für Eltern">👪</button>' : '')+
     '</div></div>';
 }
@@ -1418,6 +1449,7 @@ document.getElementById('app').addEventListener('click', function(e){
   else if (action==='speak') speak(state.currentQuestion.prompt);
   else if (action==='leave-round') leaveRound();
   else if (action==='open-parent-gate') openParentGate();
+  else if (action==='cycle-theme') cycleTheme();
   else if (action==='check-gate') checkGate();
   else if (action==='set-filter') setFilter(el.getAttribute('data-filter'));
   else if (action==='toggle-bonus') toggleBonus();
